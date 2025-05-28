@@ -1,7 +1,7 @@
  # Samvaad-CMS
 
- This Repo is custom content management system which is displayed on samvaad - website content.
- which can be updated dynamically, without making the direct changes into samvaad-website codebase.
+ This Repo is custom content management system for samvaad - website. Content displayed on website
+ can be updated dynamically, without making the direct changes into samvaad-website codebase.
 
  It is written mainly in php and uses html, CSS, tailwindCSS, and few bootstrap components.
  mysql is used for db.
