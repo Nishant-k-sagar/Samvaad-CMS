@@ -1,0 +1,17 @@
+{
+    "name": "nishant/cms",
+    "autoload": {
+        "psr-4": {
+            "Nishant\\Cms\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Nishant-k-sagar",
+            "email": "nishantsagar004@gmail.com"
+        }
+    ],
+    "require": {
+        "cloudinary/cloudinary_php": "^2"
+    }
+}
