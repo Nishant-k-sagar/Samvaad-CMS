@@ -25,6 +25,12 @@ include('includes/header.php');
             <a href="images_show.php" class="btn btn-outline-primary btn-lg w-100 rounded-pill d-flex align-items-center justify-content-center gap-3 shadow-sm hover-shadow">
               <span class="fs-3">📷</span> <span>Show Images</span>
             </a>
+            <a href="./events/events.php" class="btn btn-outline-primary btn-lg w-100 rounded-pill d-flex align-items-center justify-content-center gap-3 shadow-sm hover-shadow">
+              <span class="fs-3">🎉</span> <span>Events Management</span>
+            </a>
+            <a href="./events/events_show.php" class="btn btn-outline-primary btn-lg w-100 rounded-pill d-flex align-items-center justify-content-center gap-3 shadow-sm hover-shadow">
+              <span class="fs-3">🎬</span> <span>Events Images</span>
+            </a>
           </div>
         </div>
       </div>
