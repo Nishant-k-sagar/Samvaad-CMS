@@ -11,75 +11,59 @@ use Cloudinary\Api\Upload\UploadApi;
 $message = '';
 
 if (isset($_POST['submit'])) {
-    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
-    $success = 0;
-    $fail = 0;
-    $errors = [];
-
-    if (!empty($_FILES['images']['name'][0])) {
-        foreach ($_FILES['images']['tmp_name'] as $key => $tmp_name) {
-            $fileName = basename($_FILES['images']['name'][$key]);
-            
-            // Skip empty files
-            if ($_FILES['images']['error'][$key] !== UPLOAD_ERR_OK) {
-                $errors[] = "File $fileName: Upload error (" . $_FILES['images']['error'][$key] . ")";
-                $fail++;
-                continue;
-            }
-
-            // Verify MIME type
-            $fileType = mime_content_type($tmp_name);
-            if (!in_array($fileType, $allowed)) {
-                $errors[] = "File $fileName: Invalid file type ($fileType)";
-                $fail++;
-                continue;
-            }
-
+    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    // Get form data
+    $memberName = $_POST['member_name'] ?? '';
+    $memberRole = $_POST['member_role'] ?? '';
+    $memberBio = $_POST['member_bio'] ?? '';
+    $memberType = $_POST['member_type'] ?? 'general';
+    
+    // Check if file was uploaded
+    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $fileName = basename($_FILES['image']['name']);
+        $tmpName = $_FILES['image']['tmp_name'];
+        $fileType = mime_content_type($tmpName);
+        
+        if (in_array($fileType, $allowed)) {
             try {
                 // Upload to Cloudinary
-                $result = (new UploadApi())->upload($tmp_name, [
-                    'folder' => 'your_folder_name', // Update or remove this
+                $result = (new UploadApi())->upload($tmpName, [
+                    'folder' => 'team_members',
                     'resource_type' => 'image'
                 ]);
 
-                // Store in database
-                if ($stm = $connect->prepare('INSERT INTO images (image_name, image_url, public_id) VALUES (?, ?, ?)')) {
-                    $stm->bind_param('sss', 
+                // Store in database with team member fields
+                if ($stm = $connect->prepare('INSERT INTO images (image_name, image_url, public_id, member_name, member_role, member_bio, member_type) VALUES (?, ?, ?, ?, ?, ?, ?)')) {
+                    $stm->bind_param('sssssss', 
                         $fileName,
                         $result['secure_url'],
-                        $result['public_id']
+                        $result['public_id'],
+                        $memberName,
+                        $memberRole,
+                        $memberBio,
+                        $memberType
                     );
+                    
                     if ($stm->execute()) {
-                        $success++;
+                        set_message("Image uploaded successfully!");
+                        header('Location: images.php');
+                        die();
                     } else {
-                        $errors[] = "File $fileName: Database insert failed - " . $connect->error;
-                        $fail++;
+                        $message = '<div class="alert alert-danger mb-4">Database error: ' . $connect->error . '</div>';
                     }
                     $stm->close();
                 } else {
-                    $errors[] = "File $fileName: Database prepare failed - " . $connect->error;
-                    $fail++;
+                    $message = '<div class="alert alert-danger mb-4">Database prepare failed</div>';
                 }
             } catch (Exception $e) {
-                $errors[] = "File $fileName: Cloudinary upload failed - " . $e->getMessage();
-                $fail++;
+                $message = '<div class="alert alert-danger mb-4">Upload failed: ' . $e->getMessage() . '</div>';
             }
+        } else {
+            $message = '<div class="alert alert-danger mb-4">Invalid file type</div>';
         }
-
-        // Build result message
-        $messageContent = "$success image(s) uploaded successfully.";
-        if ($fail > 0) {
-            $messageContent .= " $fail failed.";
-            if (!empty($errors)) {
-                $messageContent .= "<br><small>" . implode("<br>", $errors) . "</small>";
-            }
-        }
-        
-        set_message($messageContent);
-        header('Location: images.php');
-        die();
     } else {
-        $message = '<div class="alert alert-warning mb-4">No files selected</div>';
+        $message = '<div class="alert alert-warning mb-4">Please select an image</div>';
     }
 }
 ?>
@@ -89,27 +73,45 @@ if (isset($_POST['submit'])) {
         <div class="col-lg-6">
             <div class="card shadow border-0 rounded">
                 <div class="card-body">
-                    <h2 class="card-title mb-4 text-center">Add New Images</h2>
+                    <h2 class="card-title mb-4 text-center">Add New Image</h2>
                     <?= $message ?>
                     <form method="post" enctype="multipart/form-data">
+                        
+                        <!-- Image Upload -->
                         <div class="mb-3">
-                            <label class="form-label">Select images (multiple allowed):</label>
-                            <input type="file" 
-                                   name="images[]" 
-                                   class="form-control" 
-                                   accept="image/*" 
-                                   multiple 
-                                   required
-                                   onchange="previewFiles(event)">
-                            <div id="filePreview" class="mt-2"></div>
+                            <label class="form-label">Select Image *</label>
+                            <input type="file" name="image" class="form-control" accept="image/*" required>
                         </div>
+                        
+                        <!-- Team Member Type -->
+                        <div class="mb-3">
+                            <label class="form-label">Image Type</label>
+                            <select name="member_type" class="form-select" onchange="toggleMemberFields(this.value)">
+                                <option value="general">Regular Image</option>
+                                <option value="core_team">Core Team Member</option>
+                                <option value="volunteer">Volunteer</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Team Member Fields (hidden by default) -->
+                        <div id="memberFields" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Member Name</label>
+                                <input type="text" name="member_name" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Member Role</label>
+                                <input type="text" name="member_role" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Member Bio</label>
+                                <textarea name="member_bio" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
                         <div class="d-flex justify-content-between">
-                            <button type="submit" name="submit" class="btn btn-success">
-                                <i class="fas fa-upload me-2"></i>Upload Images
-                            </button>
-                            <a href="images.php" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Back to Images
-                            </a>
+                            <button type="submit" name="submit" class="btn btn-success">Upload Image</button>
+                            <a href="images.php" class="btn btn-secondary">Back to Images</a>
                         </div>
                     </form>
                 </div>
@@ -119,18 +121,26 @@ if (isset($_POST['submit'])) {
 </div>
 
 <script>
-function previewFiles(event) {
-    const preview = document.getElementById('filePreview');
-    preview.innerHTML = '';
-    
-    const files = event.target.files;
-    for (const file of files) {
-        const div = document.createElement('div');
-        div.className = 'text-muted small mb-1';
-        div.textContent = `${file.name} (${Math.round(file.size/1024)}KB)`;
-        preview.appendChild(div);
+function toggleMemberFields(value) {
+    const fields = document.getElementById('memberFields');
+    const roleInput = document.querySelector('input[name="member_role"]');
+
+    // Show/hide member fields based on selection
+    fields.style.display = (value === 'general') ? 'none' : 'block';
+
+    // Update placeholder and value
+    if (value === 'volunteer') {
+        roleInput.value = 'Volunteer';
+        roleInput.placeholder = 'Volunteer (by default)';
+    } else if (value === 'core_team') {
+        roleInput.value = 'Core Team Member';
+        roleInput.placeholder = 'Core Team Member (by default)';
+    } else {
+        roleInput.placeholder = '';
+        roleInput.value = '';
     }
 }
 </script>
+
 
 <?php include('includes/footer.php'); ?>
